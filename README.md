@@ -25,7 +25,7 @@ docker compose up -d postgres
 pnpm --filter @reviewapp/backend migrate
 ```
 
-Postgres слухає порт 5432. Якщо він зайнятий, створи в корені `.env` з `POSTGRES_PORT=5433` і постав той самий порт у `DATABASE_URL` в `apps/backend/.env`.
+Postgres слухає порт 5432. Якщо він зайнятий, необхідно створити в корені `.env` з `POSTGRES_PORT=5433` і поставити той самий порт у `DATABASE_URL` в `apps/backend/.env`.
 
 ## Запуск
 
