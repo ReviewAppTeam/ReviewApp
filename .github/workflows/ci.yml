@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  HUSKY: 0
+
+jobs:
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate routes and API client
+        run: pnpm --filter @reviewapp/web gen
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm --filter @reviewapp/web lint
+
+      - name: Typecheck
+        run: pnpm --filter @reviewapp/web typecheck
+
+      - name: Unit tests
+        run: pnpm --filter @reviewapp/web test
+
+      - name: Build
+        run: pnpm --filter @reviewapp/web build
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/backend
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18-trixie
+        env:
+          POSTGRES_USER: reviewapp
+          POSTGRES_PASSWORD: reviewapp
+          POSTGRES_DB: reviewapp
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reviewapp -d reviewapp"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+asyncpg://reviewapp:reviewapp@localhost:5432/reviewapp
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.3.3
+        with:
+          working-directory: apps/backend
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Typecheck
+        run: uv run pyright
+
+      - name: Unit tests
+        run: uv run pytest
+
+      - name: Migrations apply and match the models
+        run: |
+          uv run alembic upgrade head
+          uv run alembic check
+
+      - name: openapi.json matches the code
+        run: |
+          uv run python -m scripts.export_openapi
+          if ! git diff --exit-code -- openapi.json; then
+            echo "::error file=apps/backend/openapi.json::openapi.json is out of date. Run 'pnpm api:sync' and commit the result."
+            exit 1
+          fi
+
+  docker:
+    name: Backend Docker image
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: apps/backend
+          push: false
+          tags: reviewapp-backend:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
