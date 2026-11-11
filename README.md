@@ -41,6 +41,16 @@ pnpm web
 
 Фронт: http://localhost:5173. Swagger: http://localhost:8000/docs.
 
+## Імпорт відгуків
+
+`POST /api/v1/reviews/import` приймає CSV (UTF-8) з колонками `source,author,rating,text,date`. Приклад: `apps/backend/samples/reviews.csv`.
+
+```bash
+curl -F "file=@apps/backend/samples/reviews.csv" http://localhost:8000/api/v1/reviews/import
+```
+
+Повторний імпорт тих самих відгуків їх не дублює. Список: `GET /api/v1/reviews?page=1&page_size=20`, найновіші зверху.
+
 ## Команди
 
 | Команда                                             | Що робить                                                  |

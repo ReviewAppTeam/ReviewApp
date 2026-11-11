@@ -1,9 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
+from app.api.reviews import CsvImportErrorResponse
 from app.api.router import api_router
 from app.config import get_settings
+from app.services.review_import import CsvImportError
 
 
 def operation_id(route: APIRoute) -> str:
@@ -25,7 +28,14 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(api_router, prefix="/api/v1")
+    app.add_exception_handler(CsvImportError, csv_import_error_handler)
     return app
+
+
+async def csv_import_error_handler(_request: Request, exc: Exception) -> JSONResponse:
+    assert isinstance(exc, CsvImportError)
+    body = CsvImportErrorResponse(detail=exc.message, errors=exc.errors)
+    return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content=body.model_dump())
 
 
 app = create_app()
