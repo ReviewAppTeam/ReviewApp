@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://reviewapp:reviewapp@localhost:5432/reviewapp"
     cors_origins: list[str] = []
+    csv_import_max_bytes: int = 5 * 1024 * 1024
 
 
 @lru_cache
