@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [
     { name: '@hey-api/client-fetch', runtimeConfigPath: './src/api/client-config.ts' },
     'zod',
-    { name: '@hey-api/sdk', validator: true },
+    { name: '@hey-api/sdk', validator: false },
     '@tanstack/react-query',
   ],
 });
